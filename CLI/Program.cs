@@ -2,6 +2,7 @@
 
 static string[] EndFiles(string[] langarr)
 {
+    
     string st = "";
     foreach (string lang in langarr)
     {
@@ -11,16 +12,30 @@ static string[] EndFiles(string[] langarr)
                 st += "cs ";
                 break;
             case "c++":
-                st += "cpp";
+                st += "cpp ";
+                st += "h ";
                 break;
             case "c":
-                st += "c";
+                st += "c ";
+                st += "h ";
                 break;
             case "phyton":
-                st += "py";
+                st += "py ";
+                break;
+            case "java":
+                st += "java ";
+                break;
+            case "javascript":
+                st += "js ";
+                break;
+            case "html":
+                st += "html ";
+                break;
+            case "css":
+                st += "css ";
                 break;
             case "all":
-                st = "cs cpp c py";
+                st = "cs cpp c py h js java html css ";
                 break;
             default:
                 break;
@@ -36,14 +51,26 @@ static bool isExsitFile(string[] arr, string file)
     }
     return false;
 }
-var languageOption = new Option<string>(new[] { "--language","--l" }, "language files to bundle.") { IsRequired = true };
-var bundleOption = new Option<FileInfo>(new[] { "--output" ,"--o"}, "File path and name.");
-var noteOption = new Option<bool>(new[] { "--note" ,"--n","--i"}, "Include source file paths as comments in the bundle.");
-var sortOption = new Option<string>(new[] { "--sort","--s" }, "Sort files by 'name' or 'type'. Default is 'name'.");//i need to add default
-var removeEmptyLinesOption = new Option<bool>(new[] { "remove-empty-lines" ,"--r"}, "Remove empty lines from the source files.");
+var languageOption = new Option<string>( "--language", "language files to bundle.") { IsRequired = true };
+languageOption.AddAlias("-l");
 
-var bundelCommand = new Command("bundle", "bundle code files to single file");
+var bundleOption = new Option<FileInfo>( "--output" , "File path and name.");
+bundleOption.AddAlias("-o");
+var noteOption = new Option<bool>( "--note" , "Include source file paths as comments in the bundle.");
+noteOption.AddAlias("-n");
+noteOption.AddAlias("-i");
+noteOption.SetDefaultValue(false);
+
+var sortOption = new Option<string>( "--sort", "Sort files by 'name' or 'type'. Default is 'name'.");//i need to add default
+sortOption.AddAlias("-s");
+sortOption.SetDefaultValue("name");
+var removeEmptyLinesOption = new Option<bool>( "--remove-empty-lines" , "Remove empty lines from the source files.");
+removeEmptyLinesOption.AddAlias("-r");
+removeEmptyLinesOption.SetDefaultValue(false) ;
 var authorOption = new Option<string>("--author", "Specify the author name to include in the bundle header.");
+authorOption.AddAlias("-a");
+var bundelCommand = new Command("bundle", "bundle code files to single file");
+
 bundelCommand.AddOption(languageOption);
 bundelCommand.AddOption(bundleOption);
 bundelCommand.AddOption(noteOption);
@@ -57,14 +84,9 @@ bundelCommand.SetHandler((language, note, sort, rel, author, output) =>
         string[] arr = EndFiles(language.Split(" "));
         var dir = Directory.GetCurrentDirectory();
         List<string> files = Directory.GetFiles(dir).ToList();
-        foreach (string file in files)
-        {
-            if (!isExsitFile(arr, Path.GetExtension(file).TrimStart('.'))||
-            file.Contains("bin")||file.Contains("debug"))
-            {
-                files.Remove(file);
-            }
-        }
+        files = files.Where(file => isExsitFile(arr, Path.GetExtension(file).TrimStart('.')))
+    .Where(file => !file.Contains("bin") && !file.Contains("debug"))
+    .ToList();
         if (sort == "type")
         {
             files = files.OrderBy(file => Path.GetExtension(file)).ToList();
@@ -78,7 +100,7 @@ bundelCommand.SetHandler((language, note, sort, rel, author, output) =>
         {
             if (author != null && author.Length > 0)
             {
-                writer.WriteLine($"Author: {author} ");
+                writer.WriteLine($"// Author: {author} ");
             }
             foreach (string file in files)
             {
@@ -114,10 +136,10 @@ createRspCommand.SetHandler(() =>
 {
     var quesAns = new Dictionary<string, string> {
         {"language (comma-separated, or 'all'","" } ,    
-        { "include source file paths as comments in the bundle ? (true / false)","false"},
+        { "note source file paths as comments in the bundle ? (true / false)","false"},
         { "sort files by ('name' or 'type'","name"},
-        { "remove empty lines from the source files ? (true / false)","false"},
-        {"add Author to the file?(auther name)","" },
+        { "remove-empty-lines empty lines from the source files ? (true / false)","false"},
+        {"author Author to the file?(auther name)","" },
         { "output -File path and name",""} 
     };
     foreach (var key in quesAns.Keys)
@@ -135,10 +157,11 @@ createRspCommand.SetHandler(() =>
     using (FileStream resFile = new FileStream(rspName, FileMode.CreateNew, FileAccess.Write))
     using (StreamWriter writer = new StreamWriter(resFile))
     {
+        writer.WriteLine("bundle ");
         foreach (var (key,value) in quesAns)
         {
             var option = key[0];
-            writer.WriteLine($"--{option} {value}");
+            writer.WriteLine($"-{option} {value}");
         }
     }
     Console.WriteLine($"Response File created successfully. Run it with fib @{rspName}");
